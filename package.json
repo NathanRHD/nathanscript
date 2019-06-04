@@ -1,0 +1,24 @@
+{
+  "name": "nathanscript",
+  "version": "5.0.0",
+  "description": "Simple application state and asynchronous flow management with React Hooks.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "react": "^16.8.6",
+    "redux": "^4.0.1",
+    "bluebird": "^3.5.4",
+    "bluebird-global": "^1.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "^16.8.17",
+    "@types/redux": "^3.6.0",
+    "@types/bluebird-global": "^3.5.11",
+    "typescript": "^3.4.5",
+    "tslib": "^1.9.3"
+  },
+  "author": "Nathan Russell",
+  "license": "ISC"
+}
