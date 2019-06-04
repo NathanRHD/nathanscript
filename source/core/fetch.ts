@@ -1,7 +1,7 @@
 import * as React from "react"
 
 import { usePromiseCleanUp, asyncForEach } from './async'
-import { NotNulled, ThenParameters, ObjectKey } from '../types';
+import { NotNulled, ThenParameters, ObjectKey, ValueOf } from '../types';
 import { throwOnLogout } from './logout'
 import { CoreActionUnion, coreActionCreators } from './actions'
 import { Store, Middleware } from 'redux'
@@ -69,14 +69,16 @@ const getFetcher = <
             [Key in keyof FetchDefinitions]: FetchStateFragment<ThenParameters<ReturnType<FetchDefinitions[Key]>>>
         }
     }>,
-    Params extends {},
+    Params extends Parameters<ValueOf<FetchDefinitions>>,
     Data
 >(store: FetcherStore, key: keyof FetchDefinitions, fetcher: (params: Params) => Promise<Data>) => {
     const { dispatch } = store
 
     // this is not a hook and so cannot use useHux to get the state and dispatcher!
-    return async (params: Params, cachingPolicy: CachingPolicy) => {
+    return async (params: Params, config: FetchHookConfig<Params>) => {
         let data
+
+        const { cachingPolicy } = config
 
         // return data immediately if present and using "cache-first" policy
         const fetchState = store.getState().fetch[key]
@@ -126,7 +128,8 @@ const getFetcher = <
 // Promise can't be typed with data, as it goes through async middleware
 type AsyncMiddleware = (promise: Promise<any>) => Promise<any>
 
-export type FetchHookConfig = {
+export type FetchHookConfig<Params extends {} | undefined> = {
+    parameterKey: keyof Params
     autoFetch: boolean,
     poll: boolean,
     cachingPolicy: CachingPolicy,
@@ -144,7 +147,7 @@ type FetchHookResult<Params extends {} | undefined, Data> = FetchStateFragment<D
 }
 
 type FetchHook<Params extends {} | undefined, Data> = (
-    config: FetchHookConfig,
+    config: FetchHookConfig<Params>,
     initialParams?: Params
 ) => FetchHookResult<Params, Data>
 
@@ -194,9 +197,9 @@ export const getFetchHooks = <
          * @param initialParams
          * @returns SCREAMS :O !!!
          */
-        const useFetcher: FetchHook<Params, Data> = (config: FetchHookConfig, initialParams?: Params) => {
+        const useFetcher: FetchHook<Params, Data> = (config: FetchHookConfig<Params>, initialParams?: Params) => {
             const [fetchCount, setFetchCount] = React.useState(0);
-            const [finalParams, setFinalParams] = React.useState();
+            const [finalParams, setFinalParams] = React.useState<Params>();
 
             // should only be used to do synchronous things - or you must clean up manually!!
             // if autoFetch is false and refetch hasn't been called, this will be undefined!
@@ -231,7 +234,7 @@ export const getFetchHooks = <
 
             React.useEffect(() => {
                 if ((fetchCount !== 0 || (fetchCount === 0 && config.autoFetch)) && finalParams) {
-                    promise.current = fetcher(finalParams, config.cachingPolicy)
+                    promise.current = fetcher(finalParams, config)
                     promise.current = runMiddlewares(promise.current)
                 }
             }, [finalParams]);
