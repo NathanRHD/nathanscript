@@ -5,6 +5,7 @@ import { NotNulled, ThenParameters, ObjectKey } from '../types';
 import { throwOnLogout } from './logout'
 import { CoreActionUnion, coreActionCreators } from './actions'
 import { Store, Middleware } from 'redux'
+import { getGlobalConfig } from './config';
 
 type FetchStatus = "pending" | "success" | "error"
 
@@ -125,7 +126,7 @@ const getFetcher = <
 // Promise can't be typed with data, as it goes through async middleware
 type AsyncMiddleware = (promise: Promise<any>) => Promise<any>
 
-type FetchHookConfig = {
+export type FetchHookConfig = {
     autoFetch: boolean,
     poll: boolean,
     cachingPolicy: CachingPolicy,
@@ -189,18 +190,21 @@ export const getFetchHooks = <
         type Data = ThenParameters<ReturnType<typeof fetcherDefinition>>
 
         /**
-         * @todo make all of this work...
+         * @param config any config values provided here will override the fetchHook config provided globally
          * @param initialParams
-         * @param config { autoFetch, poll, cachingPolicy, middlewares }
          * @returns SCREAMS :O !!!
          */
-        const useFetcher: FetchHook<Params, Data> = (config: { autoFetch: boolean, poll: boolean, cachingPolicy: CachingPolicy, middlewares?: AsyncMiddleware[] }, initialParams?: Params) => {
+        const useFetcher: FetchHook<Params, Data> = (config: FetchHookConfig, initialParams?: Params) => {
             const [fetchCount, setFetchCount] = React.useState(0);
             const [finalParams, setFinalParams] = React.useState();
 
             // should only be used to do synchronous things - or you must clean up manually!!
             // if autoFetch is false and refetch hasn't been called, this will be undefined!
             const promise = React.useRef<Promise<any>>();
+
+            const globalConfig = getGlobalConfig()
+
+            config = config ? { ...globalConfig.fetchHook, ...config } : globalConfig.fetchHook
 
             const asyncMiddlewares: AsyncMiddleware[] = React.useMemo(() => [
                 ...(config.middlewares || []),
