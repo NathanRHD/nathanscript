@@ -6,7 +6,7 @@
 
 *Simple application state and asynchronous flow management with React Hooks & Redux.*
 
-[Development Trello](https://trello.com/b/oIydgXmc/nathanscript) • [Spotify Playlist](https://open.spotify.com/playlist/2fUqMwxJZFXPlTpg7zBSzm)
+[Trello Board](https://trello.com/b/oIydgXmc/nathanscript) • [Spotify Playlist](https://open.spotify.com/playlist/2fUqMwxJZFXPlTpg7zBSzm) • [Github Repo](https://github.com/NathanRussellUK/nathanscript)
 
 ## Feature Scope
 
