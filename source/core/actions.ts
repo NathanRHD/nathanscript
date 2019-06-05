@@ -1,4 +1,4 @@
-import { GlobalError } from "./global-errors"
+// import { GlobalError } from "./global-errors"
 import { ValueOf, ObjectKey } from "./types"
 import { FetchStateFragment } from "./fetch";
 
@@ -35,7 +35,7 @@ export type ActionUnion<ActionCreators extends BaseActionCreators> = ReturnType<
  */
 
 export const coreActionCreators = getActionCreators({
-    pushGlobalError: {} as { error: GlobalError },
+    // pushGlobalError: {} as { error: GlobalError },
     shiftGlobalError: {},
 
     setGlobalFetch: {} as FetchStateFragment<any> & { fetchKey: ObjectKey, paramKey: ObjectKey, paramValue: string },

@@ -8,7 +8,7 @@ import { ValueOf, NotNulled } from './core/types';
  * This will be generated!
  */
 const exampleFetchDefinitions = {
-    getName: async (fetchParams: { woop: string }) => {
+    getName: async (fetchParams: { name: string }) => {
         await delay(5000)
         return "Duckless Carswell"
     }
