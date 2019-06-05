@@ -14,12 +14,6 @@ const exampleFetchDefinitions = {
     }
 }
 
-export const exampleFetchReducer = getFetchReducer<
-    Parameters<ValueOf<typeof exampleFetchDefinitions>>[0],
-    typeof exampleFetchDefinitions
->(exampleFetchDefinitions);
+export const exampleFetchReducer = getFetchReducer(exampleFetchDefinitions);
 
-export const exampleFetchHooks = getFetchHooks<
-    Parameters<ValueOf<typeof exampleFetchDefinitions>>[0],
-    typeof exampleFetchDefinitions
->(exampleFetchDefinitions, store, hux.useHuxSelector)
+export const exampleFetchHooks = getFetchHooks(exampleFetchDefinitions, store, hux.useHuxSelector)
