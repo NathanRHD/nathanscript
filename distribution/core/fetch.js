@@ -134,7 +134,10 @@ exports.getFetchHooks = function (fetchDefinitions, store, useHuxSelector) {
                 state && state.fetch[fetchKey][paramKey].__DEFAULT
                 :
                     state && state.fetch[fetchKey][paramKey][paramValue]; });
-            return tslib_1.__assign({}, state, { status: state.data ? "success" : state.error ? "error" : "pending", fetchCount: fetchCount,
+            return tslib_1.__assign({}, state, { status: state ?
+                    (state.data ? "success" : state.error ? "error" : "pending")
+                    :
+                        null, fetchCount: fetchCount,
                 fetch: fetch });
         };
         return tslib_1.__assign({}, fetchers, (_a = {}, _a[fetchKey] = useFetcher, _a));

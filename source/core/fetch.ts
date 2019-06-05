@@ -200,17 +200,18 @@ type FetchHook<Params extends {}, Data> = (
  */
 export const getFetchHooks = <
     FetchParams extends FetchParamsBase,
-    FetchDefinitions extends FetchDefinitionsBase<FetchParams>,
-    FetchState extends FetchStateBase<FetchParams, FetchDefinitions>,
-    FetchStore extends Store<FetchState, AnyAction>
+    FetchDefinitions extends FetchDefinitionsBase<FetchParams>
 >(
     fetchDefinitions: FetchDefinitions,
-    store: FetchStore,
-    useHuxSelector: <SelectedState>(selector: (state: FetchState) => SelectedState) => SelectedState
+    store: Store<FetchStateBase<FetchParams, FetchDefinitions>, AnyAction>,
+    useHuxSelector: <SelectedState>(selector: (state: FetchStateBase<FetchParams, FetchDefinitions>) => SelectedState) => SelectedState
 ) => {
     type FetchHooks = {
         [FetchKey in keyof FetchDefinitions]: FetchHook<Parameters<FetchDefinitions[FetchKey]>[0], ThenParameters<ReturnType<FetchDefinitions[FetchKey]>>>
     }
+
+    type FetchState = FetchStateBase<FetchParams, FetchDefinitions>
+    type FetchStore = Store<FetchState, AnyAction>
 
     const fetchers = (Object.keys(fetchDefinitions) as (keyof FetchDefinitions)[]).reduce<FetchHooks>((fetchers, fetchKey) => {
         const fetcherDefinition = fetchDefinitions[fetchKey]
@@ -283,7 +284,10 @@ export const getFetchHooks = <
                 ...state,
                 // this works, which is worrying:
                 // status: state.data ? "asdasd" : state.error ? "earror" : "pending",
-                status: state.data ? "success" : state.error ? "error" : "pending",
+                status: state ?
+                    (state.data ? "success" : state.error ? "error" : "pending")
+                    :
+                    null,
                 fetchCount,
                 fetch
             } as FetchHookResult<FetchParams, Data>

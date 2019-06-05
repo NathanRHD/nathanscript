@@ -21,7 +21,5 @@ export const exampleFetchReducer = getFetchReducer<
 
 export const exampleFetchHooks = getFetchHooks<
     Parameters<ValueOf<typeof exampleFetchDefinitions>>[0],
-    typeof exampleFetchDefinitions,
-    State,
-    Store
+    typeof exampleFetchDefinitions
 >(exampleFetchDefinitions, store, hux.useHuxSelector)
