@@ -25,3 +25,9 @@
 - Global error handling, with automatic clearing of new errors after a configurable delay.
 
 - A caching middleware for automatically cloning/ manually hydrating the global reducer using a caching service (i.e. local storage).
+
+## Contact Information
+
+All enquiries should be made to the General Secretary of the NathanScript Assembly:
+
+nathan.stanley.russell@outlook.com
