@@ -1,5 +1,5 @@
 import { GlobalError } from "./global-errors"
-import { ValueOf, ObjectKey } from "../types"
+import { ValueOf, ObjectKey } from "./types"
 import { FetchStateFragment } from "./fetch";
 
 export type BaseActionCreators = Record<string, (body: any) => any>

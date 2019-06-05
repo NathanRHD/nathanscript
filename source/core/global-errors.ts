@@ -1,6 +1,5 @@
 import * as React from "react"
 
-import { store } from '../redux_IMPLEMENTATION'
 import { delay } from './async'
 import { coreListen } from './listen'
 import { CoreActionUnion, coreActionCreators } from './actions';
@@ -30,8 +29,9 @@ export const globalErrorsReducer = (state: GlobalErrorsState = [], action: CoreA
 /**
  * A hook for initialising the global error handler.
  * This should only be called once, in the root component of an application - this could be enforced by throwing an error if called more than once...
+ * @todo type store
  */
-export const useGlobalErrors = React.useEffect(() => {
+export const getUseGlobalErrors = (store) => React.useEffect(() => {
     const { dispatch } = store
 
     const handleErrors = async () => {

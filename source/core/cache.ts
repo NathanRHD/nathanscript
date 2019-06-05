@@ -1,5 +1,5 @@
 import { Middleware } from 'redux';
-import { JSONValue } from '../types';
+import { JSONValue } from './types';
 
 /**
  * A helper to return redux middleware for caching state

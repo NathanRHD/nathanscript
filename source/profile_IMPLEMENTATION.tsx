@@ -1,5 +1,5 @@
 import * as React from "react"
-import { exampleFetchHooks } from "../fetch_IMPLEMENTATION"
+import { exampleFetchHooks } from "./fetch_IMPLEMENTATION"
 
 /**
  * This is, perhaps, a little unfortunate...

@@ -1,13 +1,14 @@
-import { FetchHookConfig } from "./fetch"
+import { FetchConfig, defaultParamKey } from "./fetch"
 
 export interface GlobalConfig {
-    fetchHook: FetchHookConfig
+    fetch: FetchConfig<{}>
 }
 
 // I wonder if this getter/setter pattern is strictly necessary...
 
 let globalConfig: GlobalConfig = {
-    fetchHook: {
+    fetch: {
+        paramKey: defaultParamKey,
         autoFetch: true,
         poll: false,
         cachingPolicy: "network-first"
