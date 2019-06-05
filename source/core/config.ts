@@ -1,4 +1,4 @@
-import { FetchConfig, defaultParamKey } from "./fetch"
+import { FetchConfig, defaultKey } from "./fetch"
 
 export interface GlobalConfig {
     fetch: FetchConfig<{}>
@@ -8,7 +8,7 @@ export interface GlobalConfig {
 
 let globalConfig: GlobalConfig = {
     fetch: {
-        paramKey: defaultParamKey,
+        paramKey: defaultKey,
         autoFetch: true,
         poll: false,
         cachingPolicy: "network-first"

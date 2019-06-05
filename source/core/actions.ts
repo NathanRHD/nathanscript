@@ -38,7 +38,7 @@ export const coreActionCreators = getActionCreators({
     pushGlobalError: {} as { error: GlobalError },
     shiftGlobalError: {},
 
-    setGlobalFetch: {} as FetchStateFragment<any> & { key: ObjectKey },
+    setGlobalFetch: {} as FetchStateFragment<any> & { fetchKey: ObjectKey, paramKey: ObjectKey, paramValue: string },
 
     logout: {}
 })
