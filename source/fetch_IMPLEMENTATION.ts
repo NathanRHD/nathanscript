@@ -1,8 +1,8 @@
 import { delay } from "./core/async";
 import { getFetchReducer, getFetchHooks } from './core/fetch';
 import { hux } from './hux_IMPLEMENTATION';
-import { store, Store, State } from './store_IMPLEMENTATION';
-import { ValueOf, NotNulled } from './core/types';
+import { store } from './store_IMPLEMENTATION';
+import { ValueOf } from './core/types';
 
 /**
  * This will be generated!
