@@ -1,4 +1,4 @@
-import { combineReducers, createStore, applyMiddleware, Middleware } from "redux"
+import { combineReducers, createStore, applyMiddleware, Middleware, compose } from "redux"
 import { logoutReducerFactory } from "./core/logout"
 import { exampleFetchReducer } from './fetch_IMPLEMENTATION/fetch-reducer_IMPLEMENTATION'
 import { listenerMiddleware } from './core/listen'
@@ -16,5 +16,10 @@ const middlewares: Middleware[] = [
     listenerMiddleware
 ]
 
-export const store = createStore(reducer, applyMiddleware(...middlewares))
+const middleware = applyMiddleware(...middlewares)
+
+const devTools = window && (window as any)["devToolsExtension"]
+
+
+export const store = createStore(reducer, compose(middleware, devTools()))
 export type Store = typeof store

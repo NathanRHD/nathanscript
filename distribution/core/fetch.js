@@ -3,7 +3,6 @@ var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var React = require("react");
-var async_1 = require("./async");
 var logout_1 = require("./logout");
 var actions_1 = require("./actions");
 var config_1 = require("./config");
@@ -16,6 +15,7 @@ exports.getFetchReducer = function (fetchDefinitions) {
     return function (state, action) {
         var _a, _b, _c;
         if (state === void 0) { state = initialState; }
+        console.log("ACTION", action);
         switch (action.type) {
             case "setGlobalFetch": {
                 var fetchKey = action.fetchKey, paramKey = action.paramKey, paramValue = action.paramValue, data = action.data, error = action.error, isPending = action.isPending;
@@ -128,33 +128,34 @@ exports.getFetchHooks = function (fetchDefinitions, store, useHuxSelector) {
                 return promise.current;
             }, [setFetchCount, fetchCount, promise]);
             React.useEffect(function () {
-                setFinalParams(initialParams);
-            }, [initialParams]);
-            React.useEffect(function () {
-                if ((fetchCount !== 0 || (fetchCount === 0 && config.autoFetch)) && finalParams) {
-                    promise.current = fetcher(finalParams, config);
-                    promise.current = runMiddlewares(promise.current);
+                if (fetchCount === 0 && config.autoFetch) {
+                    fetch(initialParams);
                 }
-            }, [finalParams]);
-            async_1.usePromiseCleanUp(promise.current);
-            var state = useHuxSelector(function (state) { return ((paramKey === exports.defaultKey) || !paramValue) ?
-                state &&
-                    state.fetch &&
-                    state.fetch[fetchKey] &&
-                    state.fetch[fetchKey][paramKey] &&
-                    state.fetch[fetchKey][paramKey].__DEFAULT
-                :
-                    state &&
+            }, []);
+            React.useEffect(function () {
+                if (fetchCount !== 0 && finalParams) {
+                    promise.current = fetcher(finalParams, config);
+                }
+            }, [fetchCount]);
+            console.log("OUTER!!", "FETCHKEY", fetchKey, "PARAMKEY", paramKey, "PARAMVALUE", paramValue);
+            var selector = React.useCallback(function () { return function (state) {
+                console.log("INNER!!", "FETCHKEY", fetchKey, "PARAMKEY", paramKey, "PARAMVALUE", paramValue);
+                console.log("CONDITION", ((paramKey === exports.defaultKey) || !paramValue));
+                return ((paramKey === exports.defaultKey) || !paramValue) ?
+                    (state &&
                         state.fetch &&
                         state.fetch[fetchKey] &&
-                        state.fetch[fetchKey][paramKey] &&
-                        state.fetch[fetchKey][paramKey][paramValue]; });
-            console.log("fetchCount", fetchCount);
-            console.log("data", state && state.data, "error", state && state.error, "isPending", state && state.isPending);
-            return tslib_1.__assign({}, state, { status: state ?
-                    (state.data ? "success" : state.error ? "error" : "pending")
+                        state.fetch[fetchKey][exports.defaultKey] &&
+                        state.fetch[fetchKey][exports.defaultKey][exports.defaultKey])
                     :
-                        null, fetchCount: fetchCount,
+                        (state &&
+                            state.fetch &&
+                            state.fetch[fetchKey] &&
+                            state.fetch[fetchKey][paramKey] &&
+                            state.fetch[fetchKey][paramKey][paramValue]);
+            }; }, [fetchKey, paramKey, paramValue]);
+            var state = useHuxSelector(selector);
+            return tslib_1.__assign({}, state, { fetchCount: fetchCount,
                 fetch: fetch });
         };
         return tslib_1.__assign({}, fetchers, (_a = {}, _a[fetchKey] = useFetcher, _a));

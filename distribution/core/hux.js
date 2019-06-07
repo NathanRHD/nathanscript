@@ -15,7 +15,7 @@ exports.getHux = function (store) {
                 update(next);
             }
         };
-        React.useEffect(function () { return subscribe(listener); });
+        React.useEffect(function () { subscribe(listener); });
         return value;
     };
     var Provider = function (_a) {

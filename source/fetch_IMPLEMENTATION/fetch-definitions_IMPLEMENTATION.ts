@@ -1,3 +1,5 @@
+import axios from "axios"
+
 import { delay } from '../core/async';
 
 /**
@@ -5,8 +7,11 @@ import { delay } from '../core/async';
  */
 export const exampleFetchDefinitions = {
     getName: async (fetchParams: { name: string }) => {
-        await delay(5000)
-        throw new Error(`Error fetching: ${name}`)
-        return "Duckless Carswell"
+        // throw new Error(`Error fetching: ${name}`)
+        const response = await axios({ url: "https://randomuser.me/api/", method: "GET" })
+
+        await delay(2000)
+
+        return response.data as any as { results: {}[] }
     }
 }

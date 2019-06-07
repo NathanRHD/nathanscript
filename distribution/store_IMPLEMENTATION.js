@@ -13,4 +13,6 @@ var middlewares = [
     local_storage_IMPLEMENTATION_1.localStorageCachingMiddleware,
     listen_1.listenerMiddleware
 ];
-exports.store = redux_1.createStore(reducer, redux_1.applyMiddleware.apply(void 0, middlewares));
+var middleware = redux_1.applyMiddleware.apply(void 0, middlewares);
+var devTools = window && window["devToolsExtension"];
+exports.store = redux_1.createStore(reducer, redux_1.compose(middleware, devTools()));
