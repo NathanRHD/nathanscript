@@ -1,13 +1,16 @@
 import * as React from "react"
 
-import { usePromiseCleanUp, asyncForEach } from './async'
-import { NotNulled, ThenParameters, ObjectKey } from '../types';
+import { usePromiseCleanUp } from './async'
+import { ThenParameters, ValueOf, NotNulled } from './types';
 import { throwOnLogout } from './logout'
 import { CoreActionUnion, coreActionCreators } from './actions'
-import { Store, Middleware } from 'redux'
+import { Store, Middleware, AnyAction } from 'redux'
 import { getGlobalConfig } from './config';
 
 type FetchStatus = "pending" | "success" | "error"
+
+export const defaultKey = "__DEFAULT"
+type DefaultKey = typeof defaultKey
 
 type FetchError = {}
 
@@ -23,30 +26,54 @@ type CachingPolicy =
     // don't use the cached data whilst pending, don't put the result of the network request into the cache
     "network-only"
 
-/**
- * @todo generation - and bluebird up axios requests and implement proper request/ promise cancellation
- */
-
 export type FetchStateFragment<Data> = {
     data: Data | null
     error: FetchError | null
-    status: FetchStatus | null
+    isPending: boolean
 }
 
-export const getFetchReducer = <FetchDefinitions extends { [key: string]: () => Promise<any> }>(fetchDefinitions: FetchDefinitions) => {
-    type FetchReducerState = { [Key in keyof FetchDefinitions]: FetchStateFragment<ThenParameters<ReturnType<FetchDefinitions[Key]>>> }
+type FetchParamsBase = { [paramKey: string]: string }
 
-    const initialState = Object.keys(fetchDefinitions).reduce((initialState, key) => {
-        return { ...initialState, [key]: { data: null, error: null, status: null } }
-    }, {}) as FetchReducerState
+type FetchDefinitionsBase<FetchParams extends FetchParamsBase> = { [fetchKey: string]: (fetchParams: FetchParams) => Promise<any> }
 
-    return (state: FetchReducerState = initialState, action: CoreActionUnion) => {
+type FetchStateBase<
+    FetchParams extends FetchParamsBase,
+    FetchDefinitions extends FetchDefinitionsBase<FetchParams>
+    > = {
+        fetch: {
+            [FetchKey in keyof FetchDefinitions]: {
+                [ParamKey in keyof FetchParams | DefaultKey]: {
+                    [ParamValue in ValueOf<FetchParams> | DefaultKey]: FetchStateFragment<ThenParameters<ReturnType<FetchDefinitions[FetchKey]>>>
+                }
+            }
+        }
+    } | undefined
+
+export const getFetchReducer = <
+    FetchParams extends FetchParamsBase,
+    FetchDefinitions extends FetchDefinitionsBase<FetchParams>
+>(fetchDefinitions: FetchDefinitions) => {
+
+    const initialState = Object.keys(fetchDefinitions).reduce((initialState, fetchKey) => {
+        return {
+            ...initialState,
+            [fetchKey]: {}
+        }
+    }, {}) as NotNulled<FetchStateBase<FetchParams, FetchDefinitions>>["fetch"]
+
+    return (state: NotNulled<FetchStateBase<FetchParams, FetchDefinitions>>["fetch"] = initialState, action: CoreActionUnion) => {
         switch (action.type) {
             case "setGlobalFetch": {
-                const { key, data, error, status } = action
+                const { fetchKey, paramKey, paramValue, data, error, isPending } = action
                 return {
                     ...state,
-                    [key]: { data, error, status }
+                    [fetchKey]: {
+                        // this is unfortunate
+                        ...state.fetch[fetchKey as string],
+                        [paramKey]: {
+                            [paramValue]: { data, error, isPending }
+                        }
+                    }
                 }
             }
             default: {
@@ -59,58 +86,64 @@ export const getFetchReducer = <FetchDefinitions extends { [key: string]: () => 
 /**
  * all other effects related to asynchronous flow should be handled in hooks that consume global fetch! (this will
  * effectively replace sagas, and provide a similar experience to using graphql!)
- * @param key
+ * @param store
+ * @param fetchKey
  * @param fetcher 
  */
 const getFetcher = <
-    FetchDefinitions extends { [key: string]: () => Promise<any> },
-    FetcherStore extends Store<{
-        fetch: {
-            [Key in keyof FetchDefinitions]: FetchStateFragment<ThenParameters<ReturnType<FetchDefinitions[Key]>>>
-        }
-    }>,
-    Params extends {},
+    FetchParams extends FetchParamsBase,
+    FetchDefinitions extends FetchDefinitionsBase<FetchParams>,
+    FetchState extends FetchStateBase<FetchParams, FetchDefinitions>,
+    FetchStore extends Store<FetchState, AnyAction>,
     Data
->(store: FetcherStore, key: keyof FetchDefinitions, fetcher: (params: Params) => Promise<Data>) => {
+>(store: FetchStore, fetchKey: keyof FetchDefinitions, fetcher: (fetchParams: FetchParams) => Promise<Data>) => {
     const { dispatch } = store
 
     // this is not a hook and so cannot use useHux to get the state and dispatcher!
-    return async (params: Params, cachingPolicy: CachingPolicy) => {
+    return async (params: FetchParams, config: FetchConfig<FetchParams>) => {
         let data
 
+        const { cachingPolicy, paramKey } = config
+
+        const paramValue = paramKey === defaultKey ? defaultKey : params[paramKey]
+
+        const getFragment = (state: FetchState) => state && state.fetch[fetchKey][paramKey][paramValue]
+
         // return data immediately if present and using "cache-first" policy
-        const fetchState = store.getState().fetch[key]
-        if (cachingPolicy === "cache-first" && !!fetchState.data) {
-            return fetchState.data
+        if (cachingPolicy === "cache-first" && !!getFragment(store.getState()).data) {
+            return getFragment(store.getState()).data
         }
 
+        // refactor logic _into_ reducer!
         dispatch(coreActionCreators.setGlobalFetch({
-            key,
+            fetchKey,
+            paramKey,
+            paramValue,
 
             // reset cached data if cache isn't used
             // arguably this should be kept in the store regardless but not returned from the hook!
             data: cachingPolicy === "network-only" ?
                 null
                 :
-                store.getState().fetch[key].data,
+                getFragment(store.getState()).data,
 
             error: cachingPolicy === "network-only" ?
                 null
                 :
-                store.getState().fetch[key].error,
+                getFragment(store.getState()).error,
 
-            status: "pending"
+            isPending: true
         }))
 
         try {
             data = await fetcher(params)
-            dispatch(coreActionCreators.setGlobalFetch({ key, data, error: null, status: "success" }))
+            dispatch(coreActionCreators.setGlobalFetch({ fetchKey, paramKey, paramValue, data, error: null, isPending: false }))
 
             return data
         }
 
         catch (error) {
-            dispatch(coreActionCreators.setGlobalFetch({ key, data: null, error, status: "error" }))
+            dispatch(coreActionCreators.setGlobalFetch({ fetchKey, paramKey, paramValue, data: null, error, isPending: false }))
 
             if (cachingPolicy === "network-only") {
                 throw error
@@ -126,16 +159,17 @@ const getFetcher = <
 // Promise can't be typed with data, as it goes through async middleware
 type AsyncMiddleware = (promise: Promise<any>) => Promise<any>
 
-export type FetchHookConfig = {
+export type FetchConfig<Params extends {}> = {
+    paramKey: keyof Params | DefaultKey
     autoFetch: boolean,
     poll: boolean,
     cachingPolicy: CachingPolicy,
     middlewares?: AsyncMiddleware[]
 }
 
-type FetchHookResult<Params extends {} | undefined, Data> = FetchStateFragment<Data> & {
+type FetchHookResult<Params extends {}, Data> = FetchStateFragment<Data> & {
     // write documentation on using isPending vs status
-    isPending: boolean
+    status: FetchStatus
 
     fetchCount: number
 
@@ -143,8 +177,8 @@ type FetchHookResult<Params extends {} | undefined, Data> = FetchStateFragment<D
     fetch: (params: Params) => Promise<any>
 }
 
-type FetchHook<Params extends {} | undefined, Data> = (
-    config: FetchHookConfig,
+type FetchHook<Params extends {}, Data> = (
+    config: FetchConfig<Params>,
     initialParams?: Params
 ) => FetchHookResult<Params, Data>
 
@@ -161,50 +195,53 @@ type FetchHook<Params extends {} | undefined, Data> = (
  * @see getHux
  * 
  * @todo simplify generics?
+ * @todo check how strict these typings actually are
+ * @todo look into using opaque types for strings
  */
 export const getFetchHooks = <
-    FetchDefinitions extends { [key: string]: () => Promise<any> },
-
-    FetchState extends {
-        fetch: {
-            [Key in keyof FetchDefinitions]: FetchStateFragment<ThenParameters<ReturnType<FetchDefinitions[Key]>>>
-        }
-    },
-
-    FetchStore extends Store<FetchState>
+    FetchParams extends FetchParamsBase,
+    FetchDefinitions extends FetchDefinitionsBase<FetchParams>
 >(
     fetchDefinitions: FetchDefinitions,
-    store: FetchStore,
-    useHuxSelector: <SelectedState>(selector: (state: FetchState) => SelectedState) => SelectedState
+    store: Store<FetchStateBase<FetchParams, FetchDefinitions>, AnyAction>,
+    useHuxSelector: <SelectedState>(selector: (state: FetchStateBase<FetchParams, FetchDefinitions>) => SelectedState) => SelectedState
 ) => {
     type FetchHooks = {
-        [Key in keyof FetchDefinitions]: FetchHook<Parameters<FetchDefinitions[Key]>[0], ThenParameters<ReturnType<FetchDefinitions[Key]>>>
+        [FetchKey in keyof FetchDefinitions]: FetchHook<Parameters<FetchDefinitions[FetchKey]>[0], ThenParameters<ReturnType<FetchDefinitions[FetchKey]>>>
     }
 
-    const fetchers = (Object.keys(fetchDefinitions) as (keyof FetchDefinitions)[]).reduce<FetchHooks>((fetchers, key) => {
-        const fetcherDefinition = fetchDefinitions[key]
+    type FetchState = FetchStateBase<FetchParams, FetchDefinitions>
+    type FetchStore = Store<FetchState, AnyAction>
 
-        const fetcher = getFetcher(store, key, fetcherDefinition)
+    const fetchers = (Object.keys(fetchDefinitions) as (keyof FetchDefinitions)[]).reduce<FetchHooks>((fetchers, fetchKey) => {
+        const fetcherDefinition = fetchDefinitions[fetchKey]
 
-        type Params = Parameters<typeof fetcherDefinition>
         type Data = ThenParameters<ReturnType<typeof fetcherDefinition>>
+
+        const fetcher = getFetcher<FetchParams, FetchDefinitions, FetchState, FetchStore, Data>(store, fetchKey, fetcherDefinition)
 
         /**
          * @param config any config values provided here will override the fetchHook config provided globally
          * @param initialParams
          * @returns SCREAMS :O !!!
          */
-        const useFetcher: FetchHook<Params, Data> = (config: FetchHookConfig, initialParams?: Params) => {
+        const useFetcher: FetchHook<FetchParams, Data> = (config: FetchConfig<FetchParams>, initialParams?: FetchParams) => {
             const [fetchCount, setFetchCount] = React.useState(0);
-            const [finalParams, setFinalParams] = React.useState();
+
+            // that typings a shame
+            const [finalParams, setFinalParams] = React.useState<FetchParams | undefined>();
 
             // should only be used to do synchronous things - or you must clean up manually!!
             // if autoFetch is false and refetch hasn't been called, this will be undefined!
-            const promise = React.useRef<Promise<any>>();
+            // I wonder if this automatically resolving is a problem? Would a promise that _never_ resolves be better?
+            const promise = React.useRef<Promise<any>>(Promise.resolve());
 
             const globalConfig = getGlobalConfig()
 
-            config = config ? { ...globalConfig.fetchHook, ...config } : globalConfig.fetchHook
+            config = config ? { ...globalConfig.fetch, ...config } : globalConfig.fetch
+
+            const paramKey = config.paramKey || defaultKey
+            const paramValue = finalParams && config.paramKey ? finalParams[config.paramKey] : null
 
             const asyncMiddlewares: AsyncMiddleware[] = React.useMemo(() => [
                 ...(config.middlewares || []),
@@ -219,39 +256,46 @@ export const getFetchHooks = <
                 return prev
             }, [asyncMiddlewares])
 
-            const fetch = React.useCallback((params: Params) => {
-                setFinalParams(params);
+            const fetch = React.useCallback((fetchParams: FetchParams) => {
+                setFinalParams(fetchParams)
                 setFetchCount(fetchCount + 1)
-                return promise.current as NotNulled<typeof promise.current>
-            }, [setFetchCount, fetchCount]);
+                return promise.current
+            }, [setFetchCount, fetchCount, promise])
 
             React.useEffect(() => {
-                setFinalParams(initialParams);
+                setFinalParams(initialParams)
             }, [initialParams])
 
             React.useEffect(() => {
                 if ((fetchCount !== 0 || (fetchCount === 0 && config.autoFetch)) && finalParams) {
-                    promise.current = fetcher(finalParams, config.cachingPolicy)
+                    promise.current = fetcher(finalParams, config)
                     promise.current = runMiddlewares(promise.current)
                 }
-            }, [finalParams]);
+            }, [finalParams])
 
             usePromiseCleanUp(promise.current)
 
-            // that typing is unfortunate
-            const state = useHuxSelector(state => state.fetch[key as string]);
+            const state = useHuxSelector(state => ((paramKey === defaultKey) || !paramValue) ?
+                state && state.fetch[fetchKey][paramKey].__DEFAULT
+                :
+                state && state.fetch[fetchKey][paramKey][paramValue])
 
             return {
                 ...state,
-                isPending: state.status === "pending",
+                // this works, which is worrying:
+                // status: state.data ? "asdasd" : state.error ? "earror" : "pending",
+                status: state ?
+                    (state.data ? "success" : state.error ? "error" : "pending")
+                    :
+                    null,
                 fetchCount,
                 fetch
-            } as FetchHookResult<Params, Data>
+            } as FetchHookResult<FetchParams, Data>
         }
 
         return {
             ...fetchers,
-            [`useFetcher_${key}`]: useFetcher
+            [fetchKey]: useFetcher
         }
 
     }, {} as FetchHooks)

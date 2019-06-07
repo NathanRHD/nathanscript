@@ -15,11 +15,11 @@
         "noLib": false,
         "preserveConstEnums": false,
         "noImplicitAny": true,
-        "outDir": "../distribution",
+        "outDir": "./distribution",
         "lib": [
             "es2015",
             "es5",
-            "dom",
+            "dom"
         ]
     }
 }
