@@ -7,7 +7,7 @@ export const getHux = function <State>(store: Store<State>) {
   /**
    * @todo should probably fix this..?
    */
-  const HuxContext = React.createContext<Store<State>>(null as any);
+  const HuxContext = React.createContext<Store<State>>(store);
 
   // Dispatches don't need to be a hook, and shouldn't really be exposed directly; a core set of hooks can get the store 
   // object and call dispatch on it given pre-determined functionality.

@@ -19,7 +19,11 @@ exports.getFetchReducer = function (fetchDefinitions) {
         switch (action.type) {
             case "setGlobalFetch": {
                 var fetchKey = action.fetchKey, paramKey = action.paramKey, paramValue = action.paramValue, data = action.data, error = action.error, isPending = action.isPending;
-                return tslib_1.__assign({}, state, (_a = {}, _a[fetchKey] = tslib_1.__assign({}, state.fetch[fetchKey], (_b = {}, _b[paramKey] = (_c = {},
+                return tslib_1.__assign({}, (state || {}), (_a = {}, _a[fetchKey] = tslib_1.__assign({}, ((state &&
+                    state.fetch &&
+                    state.fetch[fetchKey])
+                    ||
+                        {}), (_b = {}, _b[paramKey] = (_c = {},
                     _c[paramValue] = { data: data, error: error, isPending: isPending },
                     _c), _b)), _a));
             }
@@ -38,7 +42,10 @@ var getFetcher = function (store, fetchKey, fetcher) {
                 case 0:
                     cachingPolicy = config.cachingPolicy, paramKey = config.paramKey;
                     paramValue = paramKey === exports.defaultKey ? exports.defaultKey : params[paramKey];
-                    getFragment = function (state) { return state && state.fetch[fetchKey][paramKey][paramValue]; };
+                    getFragment = function (state) { return state &&
+                        state.fetch[fetchKey] &&
+                        state.fetch[fetchKey][paramKey] &&
+                        state.fetch[fetchKey][paramKey][paramValue]; };
                     if (cachingPolicy === "cache-first" && !!getFragment(store.getState()).data) {
                         return [2, getFragment(store.getState()).data];
                     }
@@ -131,9 +138,19 @@ exports.getFetchHooks = function (fetchDefinitions, store, useHuxSelector) {
             }, [finalParams]);
             async_1.usePromiseCleanUp(promise.current);
             var state = useHuxSelector(function (state) { return ((paramKey === exports.defaultKey) || !paramValue) ?
-                state && state.fetch[fetchKey][paramKey].__DEFAULT
+                state &&
+                    state.fetch &&
+                    state.fetch[fetchKey] &&
+                    state.fetch[fetchKey][paramKey] &&
+                    state.fetch[fetchKey][paramKey].__DEFAULT
                 :
-                    state && state.fetch[fetchKey][paramKey][paramValue]; });
+                    state &&
+                        state.fetch &&
+                        state.fetch[fetchKey] &&
+                        state.fetch[fetchKey][paramKey] &&
+                        state.fetch[fetchKey][paramKey][paramValue]; });
+            console.log("fetchCount", fetchCount);
+            console.log("data", state && state.data, "error", state && state.error, "isPending", state && state.isPending);
             return tslib_1.__assign({}, state, { status: state ?
                     (state.data ? "success" : state.error ? "error" : "pending")
                     :

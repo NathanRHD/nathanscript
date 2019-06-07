@@ -6,7 +6,7 @@ var listen_1 = require("./listen");
 exports.logoutReducerFactory = function (subReducer) {
     return function (state, action) {
         if (action.type === "logout") {
-            return;
+            return subReducer(undefined, { type: "" });
         }
         return subReducer(state, action);
     };

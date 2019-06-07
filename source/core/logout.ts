@@ -7,10 +7,10 @@ import { coreListen } from './listen';
  * @param subReducer The reducer responsible for taking an incoming action and returning new state if it isn't a logout action
  * @see Reducer
  */
-export const logoutReducerFactory = <State>(subReducer: Reducer<State>): Reducer<State | undefined> => {
-    return (state: State | undefined, action: CoreActionUnion) => {
+export const logoutReducerFactory = <State>(subReducer: Reducer<State>): Reducer<State, CoreActionUnion> => {
+    return (state, action) => {
         if (action.type === "logout") {
-            return
+            return subReducer(undefined, { type: "" })
         }
 
         return subReducer(state, action)

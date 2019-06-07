@@ -19,7 +19,7 @@ exports.usePromiseCleanUp = function (promise) {
     React.useEffect(function () { return function () {
         promise && promise.cancel();
         resolveCleanUp();
-    }; }, [promise]);
+    }; }, []);
     return cleanUpPromise;
 };
 function asyncForEach(array, callback) {

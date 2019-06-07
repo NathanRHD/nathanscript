@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var React = require("react");
 exports.getHux = function (store) {
-    var HuxContext = React.createContext(null);
+    var HuxContext = React.createContext(store);
     var useHuxSelector = function (selector) {
         var huxContext = React.useContext(HuxContext);
         var subscribe = huxContext.subscribe, getState = huxContext.getState;

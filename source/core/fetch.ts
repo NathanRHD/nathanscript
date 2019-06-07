@@ -4,7 +4,7 @@ import { usePromiseCleanUp } from './async'
 import { ThenParameters, ValueOf, NotNulled } from './types';
 import { throwOnLogout } from './logout'
 import { CoreActionUnion, coreActionCreators } from './actions'
-import { Store, Middleware, AnyAction } from 'redux'
+import { Store, Middleware, AnyAction, Reducer } from 'redux'
 import { getGlobalConfig } from './config';
 
 type FetchStatus = "pending" | "success" | "error"
@@ -52,7 +52,7 @@ type FetchStateBase<
 export const getFetchReducer = <
     FetchParams extends FetchParamsBase,
     FetchDefinitions extends FetchDefinitionsBase<FetchParams>
->(fetchDefinitions: FetchDefinitions) => {
+>(fetchDefinitions: FetchDefinitions): Reducer => {
 
     const initialState = Object.keys(fetchDefinitions).reduce((initialState, fetchKey) => {
         return {
@@ -66,10 +66,16 @@ export const getFetchReducer = <
             case "setGlobalFetch": {
                 const { fetchKey, paramKey, paramValue, data, error, isPending } = action
                 return {
-                    ...state,
+                    ...(state || {}),
                     [fetchKey]: {
                         // this is unfortunate
-                        ...state.fetch[fetchKey as string],
+                        ...(
+                            (state &&
+                                state.fetch &&
+                                state.fetch[fetchKey as string])
+                            ||
+                            {}
+                        ),
                         [paramKey]: {
                             [paramValue]: { data, error, isPending }
                         }
@@ -107,7 +113,10 @@ const getFetcher = <
 
         const paramValue = paramKey === defaultKey ? defaultKey : params[paramKey]
 
-        const getFragment = (state: FetchState) => state && state.fetch[fetchKey][paramKey][paramValue]
+        const getFragment = (state: FetchState) => state &&
+            state.fetch[fetchKey] &&
+            state.fetch[fetchKey][paramKey] &&
+            state.fetch[fetchKey][paramKey][paramValue]
 
         // return data immediately if present and using "cache-first" policy
         if (cachingPolicy === "cache-first" && !!getFragment(store.getState()).data) {
@@ -256,6 +265,10 @@ export const getFetchHooks = <
                 return prev
             }, [asyncMiddlewares])
 
+            /**
+             * @todo close this horrible loop.
+             */
+
             const fetch = React.useCallback((fetchParams: FetchParams) => {
                 setFinalParams(fetchParams)
                 setFetchCount(fetchCount + 1)
@@ -276,14 +289,26 @@ export const getFetchHooks = <
             usePromiseCleanUp(promise.current)
 
             const state = useHuxSelector(state => ((paramKey === defaultKey) || !paramValue) ?
-                state && state.fetch[fetchKey][paramKey].__DEFAULT
+                state &&
+                state.fetch &&
+                state.fetch[fetchKey] &&
+                state.fetch[fetchKey][paramKey] &&
+                state.fetch[fetchKey][paramKey].__DEFAULT
                 :
-                state && state.fetch[fetchKey][paramKey][paramValue])
+                state &&
+                state.fetch &&
+                state.fetch[fetchKey] &&
+                state.fetch[fetchKey][paramKey] &&
+                state.fetch[fetchKey][paramKey][paramValue]
+            )
+
+            console.log("fetchCount", fetchCount)
+            console.log("data", state && state.data, "error", state && state.error, "isPending", state && state.isPending)
 
             return {
                 ...state,
                 // this works, which is worrying:
-                // status: state.data ? "asdasd" : state.error ? "earror" : "pending",
+                // status: state.data ? "asdasd" : state.error ? "error" : "pending",
                 status: state ?
                     (state.data ? "success" : state.error ? "error" : "pending")
                     :
