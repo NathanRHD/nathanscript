@@ -1,16 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var React = require("react");
-var fetch_IMPLEMENTATION_1 = require("./fetch_IMPLEMENTATION");
-var useGetNameFetcher = fetch_IMPLEMENTATION_1.exampleFetchHooks.getName;
-exports.Profile = function () {
-    var _a = useGetNameFetcher({
+var fetch_hooks_IMPLEMENTATION_1 = require("./fetch_IMPLEMENTATION/fetch-hooks_IMPLEMENTATION");
+var useGetNameFetcher = fetch_hooks_IMPLEMENTATION_1.exampleFetchHooks.getName;
+exports.Profile = function (_a) {
+    var _b = useGetNameFetcher({
         autoFetch: true,
         poll: false,
         cachingPolicy: "network-only",
         paramKey: "name"
-    }), data = _a.data, status = _a.status, fetch = _a.fetch, fetchCount = _a.fetchCount;
-    if (status === "error") {
+    }, { name: "Duckless" }), data = _b.data, error = _b.error, isPending = _b.isPending, fetch = _b.fetch, fetchCount = _b.fetchCount;
+    if (error) {
         return React.createElement("div", { className: "profile" },
             React.createElement("h2", null, "Error"),
             React.createElement("p", null, "Your profile could not be fetched."),
@@ -20,13 +20,16 @@ exports.Profile = function () {
                 " times."),
             React.createElement("button", { onClick: function () { return fetch({ name: "Duckless" }); } }, "Try again"));
     }
-    if (status === "pending") {
+    if (isPending) {
         return React.createElement("div", { className: "profile" },
             React.createElement("h2", null, "Pending"),
             React.createElement("p", null, "Your profile is being fetched."));
     }
-    if (status === "success") {
+    if (data) {
         return React.createElement("div", { className: "profile" },
-            React.createElement("h2", null, data));
+            React.createElement("h2", null, "Results"),
+            data && data.results.map(function (result) { return React.createElement("p", null, JSON.stringify(result)); }));
     }
+    return React.createElement("div", { className: "profile" },
+        React.createElement("h2", null, "Whoops!"));
 };

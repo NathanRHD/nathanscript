@@ -3,7 +3,6 @@ var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var tslib_1 = require("tslib");
 var React = require("react");
-var async_1 = require("./async");
 var logout_1 = require("./logout");
 var actions_1 = require("./actions");
 var config_1 = require("./config");
@@ -16,10 +15,15 @@ exports.getFetchReducer = function (fetchDefinitions) {
     return function (state, action) {
         var _a, _b, _c;
         if (state === void 0) { state = initialState; }
+        console.log("ACTION", action);
         switch (action.type) {
             case "setGlobalFetch": {
                 var fetchKey = action.fetchKey, paramKey = action.paramKey, paramValue = action.paramValue, data = action.data, error = action.error, isPending = action.isPending;
-                return tslib_1.__assign({}, state, (_a = {}, _a[fetchKey] = tslib_1.__assign({}, state.fetch[fetchKey], (_b = {}, _b[paramKey] = (_c = {},
+                return tslib_1.__assign({}, (state || {}), (_a = {}, _a[fetchKey] = tslib_1.__assign({}, ((state &&
+                    state.fetch &&
+                    state.fetch[fetchKey])
+                    ||
+                        {}), (_b = {}, _b[paramKey] = (_c = {},
                     _c[paramValue] = { data: data, error: error, isPending: isPending },
                     _c), _b)), _a));
             }
@@ -38,7 +42,10 @@ var getFetcher = function (store, fetchKey, fetcher) {
                 case 0:
                     cachingPolicy = config.cachingPolicy, paramKey = config.paramKey;
                     paramValue = paramKey === exports.defaultKey ? exports.defaultKey : params[paramKey];
-                    getFragment = function (state) { return state && state.fetch[fetchKey][paramKey][paramValue]; };
+                    getFragment = function (state) { return state &&
+                        state.fetch[fetchKey] &&
+                        state.fetch[fetchKey][paramKey] &&
+                        state.fetch[fetchKey][paramKey][paramValue]; };
                     if (cachingPolicy === "cache-first" && !!getFragment(store.getState()).data) {
                         return [2, getFragment(store.getState()).data];
                     }
@@ -121,23 +128,34 @@ exports.getFetchHooks = function (fetchDefinitions, store, useHuxSelector) {
                 return promise.current;
             }, [setFetchCount, fetchCount, promise]);
             React.useEffect(function () {
-                setFinalParams(initialParams);
-            }, [initialParams]);
-            React.useEffect(function () {
-                if ((fetchCount !== 0 || (fetchCount === 0 && config.autoFetch)) && finalParams) {
-                    promise.current = fetcher(finalParams, config);
-                    promise.current = runMiddlewares(promise.current);
+                if (fetchCount === 0 && config.autoFetch) {
+                    fetch(initialParams);
                 }
-            }, [finalParams]);
-            async_1.usePromiseCleanUp(promise.current);
-            var state = useHuxSelector(function (state) { return ((paramKey === exports.defaultKey) || !paramValue) ?
-                state && state.fetch[fetchKey][paramKey].__DEFAULT
-                :
-                    state && state.fetch[fetchKey][paramKey][paramValue]; });
-            return tslib_1.__assign({}, state, { status: state ?
-                    (state.data ? "success" : state.error ? "error" : "pending")
+            }, []);
+            React.useEffect(function () {
+                if (fetchCount !== 0 && finalParams) {
+                    promise.current = fetcher(finalParams, config);
+                }
+            }, [fetchCount]);
+            console.log("OUTER!!", "FETCHKEY", fetchKey, "PARAMKEY", paramKey, "PARAMVALUE", paramValue);
+            var selector = React.useCallback(function () { return function (state) {
+                console.log("INNER!!", "FETCHKEY", fetchKey, "PARAMKEY", paramKey, "PARAMVALUE", paramValue);
+                console.log("CONDITION", ((paramKey === exports.defaultKey) || !paramValue));
+                return ((paramKey === exports.defaultKey) || !paramValue) ?
+                    (state &&
+                        state.fetch &&
+                        state.fetch[fetchKey] &&
+                        state.fetch[fetchKey][exports.defaultKey] &&
+                        state.fetch[fetchKey][exports.defaultKey][exports.defaultKey])
                     :
-                        null, fetchCount: fetchCount,
+                        (state &&
+                            state.fetch &&
+                            state.fetch[fetchKey] &&
+                            state.fetch[fetchKey][paramKey] &&
+                            state.fetch[fetchKey][paramKey][paramValue]);
+            }; }, [fetchKey, paramKey, paramValue]);
+            var state = useHuxSelector(selector);
+            return tslib_1.__assign({}, state, { fetchCount: fetchCount,
                 fetch: fetch });
         };
         return tslib_1.__assign({}, fetchers, (_a = {}, _a[fetchKey] = useFetcher, _a));

@@ -4,10 +4,8 @@ import { usePromiseCleanUp } from './async'
 import { ThenParameters, ValueOf, NotNulled } from './types';
 import { throwOnLogout } from './logout'
 import { CoreActionUnion, coreActionCreators } from './actions'
-import { Store, Middleware, AnyAction } from 'redux'
+import { Store, Middleware, AnyAction, Reducer } from 'redux'
 import { getGlobalConfig } from './config';
-
-type FetchStatus = "pending" | "success" | "error"
 
 export const defaultKey = "__DEFAULT"
 type DefaultKey = typeof defaultKey
@@ -52,7 +50,7 @@ type FetchStateBase<
 export const getFetchReducer = <
     FetchParams extends FetchParamsBase,
     FetchDefinitions extends FetchDefinitionsBase<FetchParams>
->(fetchDefinitions: FetchDefinitions) => {
+>(fetchDefinitions: FetchDefinitions): Reducer => {
 
     const initialState = Object.keys(fetchDefinitions).reduce((initialState, fetchKey) => {
         return {
@@ -62,14 +60,21 @@ export const getFetchReducer = <
     }, {}) as NotNulled<FetchStateBase<FetchParams, FetchDefinitions>>["fetch"]
 
     return (state: NotNulled<FetchStateBase<FetchParams, FetchDefinitions>>["fetch"] = initialState, action: CoreActionUnion) => {
+        console.log("ACTION", action)
         switch (action.type) {
             case "setGlobalFetch": {
                 const { fetchKey, paramKey, paramValue, data, error, isPending } = action
                 return {
-                    ...state,
+                    ...(state || {}),
                     [fetchKey]: {
                         // this is unfortunate
-                        ...state.fetch[fetchKey as string],
+                        ...(
+                            (state &&
+                                state.fetch &&
+                                state.fetch[fetchKey as string])
+                            ||
+                            {}
+                        ),
                         [paramKey]: {
                             [paramValue]: { data, error, isPending }
                         }
@@ -107,7 +112,10 @@ const getFetcher = <
 
         const paramValue = paramKey === defaultKey ? defaultKey : params[paramKey]
 
-        const getFragment = (state: FetchState) => state && state.fetch[fetchKey][paramKey][paramValue]
+        const getFragment = (state: FetchState) => state &&
+            state.fetch[fetchKey] &&
+            state.fetch[fetchKey][paramKey] &&
+            state.fetch[fetchKey][paramKey][paramValue]
 
         // return data immediately if present and using "cache-first" policy
         if (cachingPolicy === "cache-first" && !!getFragment(store.getState()).data) {
@@ -169,7 +177,6 @@ export type FetchConfig<Params extends {}> = {
 
 type FetchHookResult<Params extends {}, Data> = FetchStateFragment<Data> & {
     // write documentation on using isPending vs status
-    status: FetchStatus
 
     fetchCount: number
 
@@ -256,6 +263,10 @@ export const getFetchHooks = <
                 return prev
             }, [asyncMiddlewares])
 
+            /**
+             * @todo close this horrible loop.
+             */
+
             const fetch = React.useCallback((fetchParams: FetchParams) => {
                 setFinalParams(fetchParams)
                 setFetchCount(fetchCount + 1)
@@ -263,31 +274,47 @@ export const getFetchHooks = <
             }, [setFetchCount, fetchCount, promise])
 
             React.useEffect(() => {
-                setFinalParams(initialParams)
-            }, [initialParams])
+                if (fetchCount === 0 && config.autoFetch) {
+                    // if autoFetch, initialParams won't be null
+                    fetch(initialParams as NotNulled<typeof initialParams>)
+                }
+            }, [])
 
             React.useEffect(() => {
-                if ((fetchCount !== 0 || (fetchCount === 0 && config.autoFetch)) && finalParams) {
+                if (fetchCount !== 0 && finalParams) {
                     promise.current = fetcher(finalParams, config)
-                    promise.current = runMiddlewares(promise.current)
+                    // promise.current = runMiddlewares(promise.current)
                 }
-            }, [finalParams])
+            }, [fetchCount])
 
-            usePromiseCleanUp(promise.current)
+            // usePromiseCleanUp(promise.current)
+            console.log("OUTER!!", "FETCHKEY", fetchKey, "PARAMKEY", paramKey, "PARAMVALUE", paramValue)
 
-            const state = useHuxSelector(state => ((paramKey === defaultKey) || !paramValue) ?
-                state && state.fetch[fetchKey][paramKey].__DEFAULT
-                :
-                state && state.fetch[fetchKey][paramKey][paramValue])
+            /**
+             * @todo fix this problem...
+             */
+            const selector = React.useCallback(() => (state: FetchState) => {
+                console.log("INNER!!", "FETCHKEY", fetchKey, "PARAMKEY", paramKey, "PARAMVALUE", paramValue)
+                console.log("CONDITION", ((paramKey === defaultKey) || !paramValue))
+
+                return ((paramKey === defaultKey) || !paramValue) ?
+                    (state &&
+                        state.fetch &&
+                        state.fetch[fetchKey] &&
+                        state.fetch[fetchKey][defaultKey] &&
+                        state.fetch[fetchKey][defaultKey][defaultKey])
+                    :
+                    (state &&
+                        state.fetch &&
+                        state.fetch[fetchKey] &&
+                        state.fetch[fetchKey][paramKey] &&
+                        state.fetch[fetchKey][paramKey][paramValue])
+            }, [fetchKey, paramKey, paramValue])
+
+            const state = useHuxSelector(selector)
 
             return {
                 ...state,
-                // this works, which is worrying:
-                // status: state.data ? "asdasd" : state.error ? "earror" : "pending",
-                status: state ?
-                    (state.data ? "success" : state.error ? "error" : "pending")
-                    :
-                    null,
                 fetchCount,
                 fetch
             } as FetchHookResult<FetchParams, Data>

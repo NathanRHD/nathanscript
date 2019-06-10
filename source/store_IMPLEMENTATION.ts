@@ -1,13 +1,11 @@
-import { combineReducers, Reducer, createStore, applyMiddleware, Middleware } from "redux"
-// import { globalErrorsReducer } from './core/global-errors'
+import { combineReducers, createStore, applyMiddleware, Middleware, compose } from "redux"
 import { logoutReducerFactory } from "./core/logout"
-import { exampleFetchReducer } from './fetch_IMPLEMENTATION'
+import { exampleFetchReducer } from './fetch_IMPLEMENTATION/fetch-reducer_IMPLEMENTATION'
 import { listenerMiddleware } from './core/listen'
 import { localStorageCachingMiddleware } from './local-storage_IMPLEMENTATION'
 
 const subReducer = combineReducers({
-    fetch: exampleFetchReducer,
-    // globalErrors: globalErrorsReducer
+    fetch: exampleFetchReducer
 })
 
 const reducer = logoutReducerFactory(subReducer)
@@ -18,5 +16,10 @@ const middlewares: Middleware[] = [
     listenerMiddleware
 ]
 
-export const store = createStore(reducer, applyMiddleware(...middlewares))
+const middleware = applyMiddleware(...middlewares)
+
+const devTools = window && (window as any)["devToolsExtension"]
+
+
+export const store = createStore(reducer, compose(middleware, devTools()))
 export type Store = typeof store

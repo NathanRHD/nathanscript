@@ -26,7 +26,7 @@ export const usePromiseCleanUp = (promise?: Promise<any>) => {
     React.useEffect(() => () => {
         promise && promise.cancel();
         resolveCleanUp()
-    }, [promise])
+    }, [])
 
     return cleanUpPromise
 }
