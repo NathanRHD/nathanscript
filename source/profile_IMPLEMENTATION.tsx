@@ -1,7 +1,5 @@
 import * as React from "react"
 import { exampleFetchHooks } from "./fetch_IMPLEMENTATION/fetch-hooks_IMPLEMENTATION"
-import { FetchConfig } from './core/fetch';
-import { hux } from './hux_IMPLEMENTATION';
 
 /**
  * This is, perhaps, a little unfortunate...
@@ -12,10 +10,11 @@ export const Profile: React.FC<{}> = ({ }) => {
 
     const { data, error, isPending, fetch, fetchCount } = useGetNameFetcher({
         autoFetch: true,
-        poll: false,
+        poll: { ms: 1000, condition: data => !!data.results.length },
         cachingPolicy: "network-only",
         paramKey: "name"
     }, { name: "Duckless" })
+
 
     if (error) {
         return <div className="profile">

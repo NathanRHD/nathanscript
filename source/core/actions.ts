@@ -1,6 +1,6 @@
 // import { GlobalError } from "./global-errors"
 import { ValueOf, ObjectKey } from "./types"
-import { FetchStateFragment } from "./fetch";
+import { FetchStateFragment } from './entity-hooks/use-fetch/fetch-reducer';
 
 export type BaseActionCreators = Record<string, (body: any) => any>
 
@@ -38,7 +38,7 @@ export const coreActionCreators = getActionCreators({
     // pushGlobalError: {} as { error: GlobalError },
     shiftGlobalError: {},
 
-    setGlobalFetch: {} as FetchStateFragment<any> & { fetchKey: ObjectKey, paramKey: ObjectKey, paramValue: string },
+    setGlobalFetch: {} as FetchStateFragment<any> & { entityKey: ObjectKey, paramKey: ObjectKey, paramValue: string },
 
     logout: {}
 })
