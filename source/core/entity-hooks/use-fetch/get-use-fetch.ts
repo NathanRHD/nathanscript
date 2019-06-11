@@ -25,7 +25,6 @@ type AsyncMiddleware = (promise: Promise<any>) => Promise<any>
 export type FetchConfig<Params extends {}, Data> = {
     paramKey: keyof Params | DefaultKey
     autoFetch: boolean,
-    poll?: { ms: number, condition: (data: Data) => boolean },
     cachingPolicy: CachingPolicy,
     middlewares?: AsyncMiddleware[]
 }
